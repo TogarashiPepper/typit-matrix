@@ -6,12 +6,12 @@ use std::{
 use matrix_sdk::{
     Client, Room, RoomState,
     ruma::events::room::{
-            ImageInfo,
-            message::{
-                AddMentions, ForwardThread, ImageMessageEventContent, MessageType,
-                OriginalSyncRoomMessageEvent, RoomMessageEventContent,
-            },
+        ImageInfo,
+        message::{
+            AddMentions, ForwardThread, ImageMessageEventContent, MessageType,
+            OriginalSyncRoomMessageEvent, RoomMessageEventContent,
         },
+    },
 };
 use mime::IMAGE_PNG;
 use tokio::{
@@ -74,12 +74,10 @@ pub async fn on_room_message(event: OriginalSyncRoomMessageEvent, room: Room, cl
         let mut buf = vec![];
 
         let mut stdout = child.stdout.take().unwrap();
-        stdout.read_to_end(&mut buf).await.unwrap();
-
-        let mut stderr = child.stderr.take().unwrap();
-        stderr.read_to_end(&mut buf).await.unwrap();
-
-        let Ok(Ok(stat)) = timeout(Duration::from_secs(10), child.wait()).await else {
+        if timeout(Duration::from_secs(25), stdout.read_to_end(&mut buf))
+            .await
+            .is_err()
+        {
             room.send(
                 RoomMessageEventContent::text_plain("Your code took too long (>10s) to render")
                     .make_reply_to(&event, ForwardThread::Yes, AddMentions::Yes),
@@ -89,6 +87,11 @@ pub async fn on_room_message(event: OriginalSyncRoomMessageEvent, room: Room, cl
 
             return;
         };
+
+        let mut stderr = child.stderr.take().unwrap();
+        stderr.read_to_end(&mut buf).await.unwrap();
+
+        let stat = child.wait().await.unwrap();
 
         let msg = if !stat.success() {
             let err = String::from_utf8_lossy(&buf).into_owned();
