@@ -1,23 +1,18 @@
+mod message;
+
 use std::{
     env,
     path::Path,
-    sync::LazyLock,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 use matrix_sdk::{
-    Client, Error, LoopCtrl, Room, RoomState,
+    Client, Error, LoopCtrl, Room,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
     ruma::{
         api::client::filter::FilterDefinition,
-        events::room::{
-            member::StrippedRoomMemberEvent,
-            message::{
-                AddMentions, ForwardThread, MessageType, OriginalSyncRoomMessageEvent,
-                RoomMessageEventContent,
-            },
-        },
+        events::room::member::StrippedRoomMemberEvent,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -168,7 +163,7 @@ async fn sync(
 
     println!("The client is ready! Listening to new messages…");
 
-    client.add_event_handler(on_room_message);
+    client.add_event_handler(message::on_room_message);
     client.add_event_handler(on_stripped_member);
 
     client
@@ -196,46 +191,6 @@ async fn persist_sync_token(session_file: &Path, sync_token: String) -> anyhow::
     fs::write(session_file, serialized_session).await?;
 
     Ok(())
-}
-
-/// Handle room messages.
-async fn on_room_message(event: OriginalSyncRoomMessageEvent, room: Room) {
-    // We only want to log text messages in joined rooms.
-    if room.state() != RoomState::Joined {
-        return;
-    }
-
-    let time_since_ev = SystemTime::now()
-        .duration_since(event.origin_server_ts.to_system_time().unwrap())
-        .unwrap();
-
-    if time_since_ev >= Duration::from_secs(5) {
-        return;
-    }
-
-    let MessageType::Text(text_content) = &event.content.msgtype else {
-        return;
-    };
-
-    let Some(content) = text_content.body.strip_prefix(",typ") else {
-        return;
-    };
-
-    let reply = if content.trim().is_empty() {
-        RoomMessageEventContent::text_plain("<text> is needed to typeset").make_reply_to(
-            &event,
-            ForwardThread::Yes,
-            AddMentions::Yes,
-        )
-    } else {
-        RoomMessageEventContent::text_plain("<your beautiful typeset document>").make_reply_to(
-            &event,
-            ForwardThread::Yes,
-            AddMentions::Yes,
-        )
-    };
-
-    room.send(reply).await.unwrap();
 }
 
 async fn on_stripped_member(room_member: StrippedRoomMemberEvent, client: Client, room: Room) {
