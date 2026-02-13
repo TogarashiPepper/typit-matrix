@@ -8,7 +8,7 @@ anyhow = "1.0.101"
 dotenvy = "0.15.7"
 html-escape = "0.2.13"
 image = "0.25.9"
-matrix-sdk = "0.16.0"
+matrix-sdk = { version = "0.16.0", default-features = false, features = ["rustls-tls", "e2e-encryption", "bundled-sqlite"] }
 mime = "0.3.17"
 serde = "1.0.228"
 serde_json = "1.0.149"
