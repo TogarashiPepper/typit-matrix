@@ -79,7 +79,7 @@ pub async fn on_room_message(event: OriginalSyncRoomMessageEvent, room: Room, cl
             .is_err()
         {
             room.send(
-                RoomMessageEventContent::text_plain("Your code took too long (>10s) to render")
+                RoomMessageEventContent::text_plain("Your code took too long (>25s) to render")
                     .make_reply_to(&event, ForwardThread::Yes, AddMentions::Yes),
             )
             .await
