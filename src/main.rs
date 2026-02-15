@@ -1,19 +1,13 @@
 mod message;
 
-use std::{
-    env,
-    path::Path,
-    time::Duration,
-};
+use std::{env, path::Path, time::Duration};
 
+use anyhow::bail;
 use matrix_sdk::{
     Client, Error, LoopCtrl, Room,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
-    ruma::{
-        api::client::filter::FilterDefinition,
-        events::room::member::StrippedRoomMemberEvent,
-    },
+    ruma::{api::client::filter::FilterDefinition, events::room::member::StrippedRoomMemberEvent},
 };
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self};
@@ -29,7 +23,20 @@ struct FullSession {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
+    // Ignore result since they might not provide env vars via .env
+    let _ = dotenvy::dotenv();
+    for v in [
+        "SESSION_FILE",
+        "HOMESERVER",
+        "DB_DIR",
+        "USERNAME",
+        "PASSWORD",
+    ] {
+        if env::var(v).is_err() {
+            bail!("Environment variable `{v}` must be defined");
+        }
+    }
+
     let session_file = env::var("SESSION_FILE").unwrap();
 
     let (client, sync_token) = if Path::exists(session_file.as_ref()) {
